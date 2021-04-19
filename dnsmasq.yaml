@@ -1,7 +1,7 @@
 spec:
   containers:
   - name: dnsmasq
-    image: registry.parkside.at/prebuilt/dnsmasq
+    image: jpillora/dnsmasq
     ports:
     - containerPort: 53
       # Esto asegura que dnsmasq estará disponible desde el puerto 53 / udp
@@ -21,7 +21,8 @@ spec:
         # dominios. Si no puede resolver un nombre de host dentro de estos dominios,
         # responderá con NXDOMAIN en lugar de intentar reenviar la solicitud
         # a un DNS ascendente.
-        '--local=/qa.parkside.at/',
+        #'--local=/qa.parkside.at/',
+        '--local=/qa.sm2baleares.es/',
       ]
     securityContext:
       capabilities:
@@ -30,7 +31,7 @@ spec:
     - mountPath: /data
       name: hosts
   - name: ingress-watch
-    image: registry.parkside.at/prebuilt/ingress-watch
+    image: webrelay/ingress
     volumeMounts:
     - mountPath: /data
       name: hosts
@@ -48,11 +49,11 @@ spec:
     - mountPath: /data
       name: hosts
   nodeSelector:
-    # This helps the scheduler to find the correct node to find this pod on.
+    # Esto ayuda al scheduler a encontrar el nodo correcto para encontrar este pod.
     purpose: cdns
   tolerations:
-    # Since the node is tainted so that nothing else runs on it,
-    # the pod has to tolerate those taints in order to be able to run there.
+    # Dado que el nodo está tainted para que no se ejecute nada más en él,
+    # el pod tiene que tolerar esas taints para poder correr allí.
   - key: purpose
     operator: Equal
     value: cdns
