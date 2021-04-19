@@ -1,0 +1,63 @@
+spec:
+  containers:
+  - name: dnsmasq
+    image: registry.parkside.at/prebuilt/dnsmasq
+    ports:
+    - containerPort: 53
+      # Esto asegura que dnsmasq estará disponible desde el puerto 53 / udp
+      # (puerto y protocolo DNS predeterminados) en el nodo en el que se ejecuta este pod.
+      # Esto tiene la consecuencia de que este pod no se puede duplicar en el nodo.
+      hostPort: 53
+      protocol: UDP
+    args:
+      [
+        '--keep-in-foreground',
+        '--log-queries',
+        '--log-facility=-',
+        '-h',
+        '--hostsdir=/data',
+
+        # Esto le indica a dnsmasq que es el DNS responsable de estos
+        # dominios. Si no puede resolver un nombre de host dentro de estos dominios,
+        # responderá con NXDOMAIN en lugar de intentar reenviar la solicitud
+        # a un DNS ascendente.
+        '--local=/qa.parkside.at/',
+      ]
+    securityContext:
+      capabilities:
+        add: ['NET_ADMIN', 'NET_RAW', 'SETUID']
+    volumeMounts:
+    - mountPath: /data
+      name: hosts
+  - name: ingress-watch
+    image: registry.parkside.at/prebuilt/ingress-watch
+    volumeMounts:
+    - mountPath: /data
+      name: hosts
+    env:
+    - name: HOSTS_FILE_PATH
+      value: '/data/hosts'
+  volumes:
+  - name: hosts
+    emptyDir: {}
+  initContainers:
+  - name: init-hosts
+    image: busybox
+    command: ['sh', '-c', 'echo', '127.0.0.1   localhost', '>', '/data/hosts']
+    volumeMounts:
+    - mountPath: /data
+      name: hosts
+  nodeSelector:
+    # This helps the scheduler to find the correct node to find this pod on.
+    purpose: cdns
+  tolerations:
+    # Since the node is tainted so that nothing else runs on it,
+    # the pod has to tolerate those taints in order to be able to run there.
+  - key: purpose
+    operator: Equal
+    value: cdns
+    effect: NoSchedule
+  - key: purpose
+    operator: Equal
+    value: cdns
+    effect: NoExecute
